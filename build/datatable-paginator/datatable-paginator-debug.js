@@ -351,7 +351,9 @@ View = Y.Base.create('dt-pg-view', Y.View, [], {
         e.preventDefault();
 
         input = e.target.one('input');
-        this.fire(EVENT_UI, { type: 'page', val: input.get('value') });
+
+        // Note: Convert input's value into a number.
+        this.fire(EVENT_UI, { type: 'page', val: +input.get('value') });
     },
 
     /**
@@ -379,7 +381,25 @@ View = Y.Base.create('dt-pg-view', Y.View, [], {
         // Not a valueFn because other class extensions may want to add to it
         this.set('strings', Y.mix((this.get('strings') || {}),
             Y.Intl.get('datatable-paginator')));
+    },
+
+
+    /**
+     Returns an Array with default values for the Rows Per Page select option.
+     We had to use a valueFn to enable language string replacement.
+
+     @protected
+     @method _defPageSizeVal
+     @since 3.13.0
+     */
+    _defPageSizeVal: function () {
+        this._initStrings();
+
+        var str = this.get('strings');
+
+        return [10, 50, 100, { label: str.showAll, value: -1 }]
     }
+
 }, {
     ATTRS: {
         /**
@@ -390,13 +410,13 @@ View = Y.Base.create('dt-pg-view', Y.View, [], {
          @since 3.11.0
          */
         pageSizes: {
-            value: [ 10, 50, 100, { label: 'Show All', value: -1 } ]
+            valueFn: '_defPageSizeVal'
         },
 
         /**
          Model used for this view
          @attribute model
-         @type {Y.Model}
+         @type {Model}
          @default null
          @since 3.11.0
          */
@@ -414,7 +434,7 @@ Controller.ATTRS = {
     /**
      A model instance or a configuration object for the Model.
      @attribute paginatorModel
-     @type {Y.Model | Object}
+     @type {Model|Object}
      @default null
      @since 3.11.0
      */
@@ -428,10 +448,10 @@ Controller.ATTRS = {
      A pointer to a Model object to be instantiated, or a String off of the
      `Y` namespace.
 
-     This is only used if the `pagiantorModel` is a configuration object or
+     This is only used if the `paginatorModel` is a configuration object or
      is null.
      @attribute paginatorModelType
-     @type {Y.Model | String}
+     @type {Model|String}
      @default 'DataTable.Paginator.Model'
      @since 3.11.0
      */
@@ -446,7 +466,7 @@ Controller.ATTRS = {
      created for each location provided. Each view created will be given the
      same model instance.
      @attribute paginatorView
-     @type {Y.View | String}
+     @type {View|String}
      @default 'DataTable.Paginator.View'
      @since 3.11.0
      */
@@ -467,8 +487,10 @@ Controller.ATTRS = {
      */
     pageSizes: {
         setter: '_setPageSizesFn',
-        value: [10, 50, 100, { label: 'Show All', value: -1 }]
+        valueFn: '_defPageSizeVal'
     },
+
+    paginatorStrings: {},
 
     /**
      Number of rows to display per page. As the UI changes the number of pages
@@ -486,7 +508,7 @@ Controller.ATTRS = {
      String of `footer` or `header`, a Y.Node, or an Array or any combination
      of those values.
      @attribute paginatorLocation
-     @type {String | Array | Y.Node}
+     @type {String|Array|Node}
      @default footer
      @since 3.11.0
      */
@@ -551,6 +573,7 @@ Y.mix(Controller.prototype, {
      */
     initializer: function () {
         // allow DT to use paged data
+        this._initPaginatorStrings();
         this._augmentData();
 
         if (!this._eventHandles.paginatorRender) {
@@ -571,6 +594,7 @@ Y.mix(Controller.prototype, {
         model.after('change', this._afterPaginatorModelChange, this);
         this.after('dataChange', this._afterDataChangeWithPaginator, this);
         this.after('rowsPerPageChange', this._afterRowsPerPageChange, this);
+        this.data.after(['add', 'remove', 'change'], this._afterDataUpdatesWithPaginator, this);
 
         // ensure our model has the correct totalItems set
         model.set('itemsPerPage', this.get('rowsPerPage'));
@@ -588,6 +612,8 @@ Y.mix(Controller.prototype, {
         var data = this.get('data'),
             model = this.get('paginatorModel');
 
+        model.set('totalItems', data.size());
+
         if (model.get('page') !== 1) {
             this.firstPage();
         } else {
@@ -598,6 +624,21 @@ Y.mix(Controller.prototype, {
                 models: data._items.concat()
             });
         }
+    },
+
+    /**
+     After data has changed due to a model being added, removed, or changed,
+     update paginator model totalItems to reflect the changes.
+     @protected
+     @method _afterDataUpdatesWithPaginator
+     @param {EventFacade} e
+     @since 3.13.0
+    */
+    _afterDataUpdatesWithPaginator: function () {
+        var model = this.get('paginatorModel'),
+            data = this.get('data');
+
+        model.set('totalItems', data.size());
     },
 
     /**
@@ -872,7 +913,7 @@ Y.mix(Controller.prototype, {
      type from `paginatorModelType`.
      @protected
      @method _setPaginatorModel
-     @param {Y.Model | Object} model
+     @param {Model|Object} model
      @return Y.Model instance
      @since 3.11.0
      */
@@ -899,6 +940,34 @@ Y.mix(Controller.prototype, {
         return typeof type === 'string' ?
             Y.Object.getValue(Y, type.split('.')) :
             type;
+    },
+
+    /**
+     Initializes paginatorStrings used for internationalization
+     @protected
+     @method _initPaginatorStrings
+     @since 3.13.0
+     */
+    _initPaginatorStrings: function () {
+        // Not a valueFn because other class extensions may want to add to it
+        this.set('paginatorStrings', Y.mix((this.get('paginatorStrings') || {}),
+            Y.Intl.get('datatable-paginator')));
+    },
+
+    /**
+     Returns an Array with default values for the Rows Per Page select option.
+     We had to use a valueFn to enable language string replacement.
+
+     @protected
+     @method _defPageSizeVal
+     @since 3.13.0
+     */
+    _defPageSizeVal: function () {
+        this._initPaginatorStrings();
+
+        var str = this.get('paginatorStrings');
+
+        return [10, 50, 100, { label: str.showAll, value: -1 }]
     }
 }, true);
 
@@ -919,7 +988,8 @@ Y.Base.mix(Y.DataTable, [Y.DataTable.Paginator]);
         "datatable-paginator-templates"
     ],
     "lang": [
-        "en"
+        "en",
+        "fr"
     ],
     "skinnable": true
 });

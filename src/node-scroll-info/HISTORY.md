@@ -6,6 +6,54 @@ ScrollInfo Node Plugin Change History
 
 * No changes.
 
+3.17.2
+------
+
+* No changes.
+
+3.17.1
+------
+
+* No changes.
+
+3.17.0
+------
+
+* No changes.
+
+3.16.0
+------
+
+* No changes.
+
+3.15.0
+------
+
+* No changes.
+
+3.14.1
+------
+
+* Fixed inaccurate scroll metrics in Chrome for Android. ([#1483][]: @rgrove)
+
+[#1483]: https://github.com/yui/yui3/issues/1483
+
+3.14.0
+------
+
+* No changes.
+
+3.13.0
+---------
+
+* Fixed `getOffscreenNodes()` and `getOnscreenNodes()` even harder (they could
+  still return incorrect information in certain cases). [Ryan Grove]
+
+3.12.0
+------
+
+ * No changes.
+
 3.11.0
 ------
 
